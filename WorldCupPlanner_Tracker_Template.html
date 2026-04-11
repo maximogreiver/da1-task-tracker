@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorldCupPlanner Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0d0d0d; color: #ccc; font-family: 'JetBrains Mono', monospace; padding: 16px; min-height: 100vh; }
+.header { margin-bottom: 16px; }
+.header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.header-top .logo { font-size: 22px; }
+.header-top .title { font-size: 20px; font-weight: 700; color: #e5c07b; letter-spacing: -0.5px; }
+.header-top .sub { font-size: 13px; color: #555; }
+.header-meta { font-size: 11px; color: #444; margin-bottom: 10px; }
+.sync { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; padding: 2px 8px; border-radius: 10px; }
+.sync.ok { color: #6ecf6e; background: #1a2a1a; }
+.sync.off { color: #cf6e6e; background: #2a1a1a; }
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; }
+.sync.ok .sync-dot { background: #4caf50; animation: pulse 2s infinite; }
+.sync.off .sync-dot { background: #bf4a4a; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.progress-stats { display: flex; gap: 12px; font-size: 12px; color: #888; margin-bottom: 6px; align-items: baseline; }
+.progress-pct { color: #98c379; font-weight: 700; font-size: 20px; }
+.progress-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: #1a1a1a; margin-bottom: 14px; }
+.progress-bar div { transition: width 0.3s; }
+.pb-done { background: #4a8abf; }
+.pb-prog { background: #4caf50; }
+.pb-block { background: #bf4a4a; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; }
+.filters input, .filters select {
+  background: #1a1a1a; color: #ccc; border: 1px solid #333; border-radius: 6px;
+  padding: 6px 10px; font-size: 13px; font-family: 'JetBrains Mono', monospace; outline: none;
+}
+.filters input { width: 160px; }
+.filters input:focus, .filters select:focus { border-color: #e5c07b; }
+.view-btns { margin-left: auto; display: flex; gap: 4px; }
+.view-btn {
+  background: #111; color: #555; border: 1px solid #333; border-radius: 6px;
+  padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+}
+.view-btn.active { background: #222; color: #e5c07b; }
+.add-btn {
+  width: 100%; padding: 10px; background: #111; border: 1px dashed #333; border-radius: 8px;
+  color: #555; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  margin-bottom: 14px; transition: all 0.15s;
+}
+.add-btn:hover { border-color: #e5c07b; color: #e5c07b; }
+.add-form {
+  background: #111; border: 1px solid #333; border-radius: 8px; padding: 14px; margin-bottom: 14px;
+}
+.add-form .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.add-form input, .add-form select {
+  background: #1a1a1a; color: #ccc; border: 1px solid #333; border-radius: 6px;
+  padding: 6px 10px; font-size: 13px; font-family: 'JetBrains Mono', monospace;
+  width: 100%; outline: none;
+}
+.add-form .members { display: flex; gap: 6px; margin-bottom: 10px; }
+.add-form .actions { display: flex; gap: 8px; }
+.btn-add {
+  background: #e5c07b; color: #000; font-weight: 700; border: none; border-radius: 6px;
+  padding: 6px 14px; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 13px;
+}
+.btn-cancel {
+  background: none; color: #888; border: 1px solid #333; border-radius: 6px;
+  padding: 6px 14px; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 13px;
+}
+.pill {
+  padding: 2px 10px; border-radius: 12px; border: 2px solid #333; background: transparent;
+  color: #555; font-size: 12px; font-weight: 400; cursor: pointer; transition: all 0.15s;
+  font-family: 'JetBrains Mono', monospace;
+}
+.pill.sel-Member1 { border-color: #e06c75; background: rgba(224,108,117,0.13); color: #e06c75; font-weight: 700; }
+.pill.sel-Member2 { border-color: #61afef; background: rgba(97,175,239,0.13); color: #61afef; font-weight: 700; }
+.pill.sel-Member3 { border-color: #98c379; background: rgba(152,195,121,0.13); color: #98c379; font-weight: 700; }
+.status-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 6px;
+  border: 1px solid #333; font-size: 11px; font-weight: 600; cursor: pointer;
+  font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+}
+.status-badge .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.st-Pendiente { background: #2a2a2a; color: #888; }
+.st-Pendiente .dot { background: #555; }
+.st-EnProgreso { background: #1a2a1a; color: #6ecf6e; }
+.st-EnProgreso .dot { background: #4caf50; }
+.st-Hecho { background: #1a1a2a; color: #6ea0cf; }
+.st-Hecho .dot { background: #4a8abf; }
+.st-Bloqueado { background: #2a1a1a; color: #cf6e6e; }
+.st-Bloqueado .dot { background: #bf4a4a; }
+.task-list { display: flex; flex-direction: column; gap: 2px; }
+.task-row {
+  background: #111; border-radius: 6px; border: 1px solid #1a1a1a; overflow: hidden; transition: all 0.15s;
+}
+.task-row.expanded { background: #151515; border-color: #333; }
+.task-header {
+  display: grid; grid-template-columns: minmax(100px,160px) 1fr auto auto;
+  align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer;
+}
+.task-cat { font-size: 10px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-name { font-size: 12px; color: #ccc; }
+.task-avatars { display: flex; gap: 3px; }
+.avatar {
+  width: 20px; height: 20px; border-radius: 50%; font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.av-Member1 { background: rgba(224,108,117,0.2); color: #e06c75; }
+.av-Member2 { background: rgba(97,175,239,0.2); color: #61afef; }
+.av-Member3 { background: rgba(152,195,121,0.2); color: #98c379; }
+.task-detail { padding: 4px 12px 12px; border-top: 1px solid #1a1a1a; }
+.task-detail-text { font-size: 11px; color: #888; margin-bottom: 10px; line-height: 1.5; }
+.task-detail-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.task-detail-label { font-size: 10px; color: #555; }
+.status-opt {
+  padding: 2px 8px; border-radius: 4px; font-size: 10px; border: 1px solid #222;
+  background: transparent; color: #444; cursor: pointer; font-family: 'JetBrains Mono', monospace;
+}
+.status-opt.active { font-weight: 600; }
+.btn-delete {
+  margin-left: auto; background: none; border: 1px solid #2a1a1a; color: #553333;
+  border-radius: 4px; font-size: 10px; cursor: pointer; padding: 2px 8px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.btn-delete:hover { color: #ff4444; border-color: #ff4444; }
+.board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 900px) { .board { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .board { grid-template-columns: 1fr; } }
+.board-col { background: #111; border-radius: 8px; padding: 10px; min-height: 200px; }
+.board-col-header {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+  padding-bottom: 8px; border-bottom: 1px solid #222;
+}
+.board-col-header .dot { width: 8px; height: 8px; border-radius: 50%; }
+.board-col-header .label { font-size: 12px; font-weight: 700; }
+.board-col-header .count { font-size: 11px; color: #444; margin-left: auto; }
+.board-card {
+  background: #0d0d0d; border-radius: 6px; padding: 8px; margin-bottom: 6px; border-left: 3px solid;
+}
+.board-card-cat { font-size: 11px; color: #555; margin-bottom: 2px; }
+.board-card-name { font-size: 12px; color: #ccc; margin-bottom: 4px; }
+.board-card-bottom { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.board-card .next-btn {
+  margin-left: auto; background: none; border: 1px solid #333; color: #555;
+  border-radius: 4px; font-size: 10px; cursor: pointer; padding: 2px 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.footer-stats {
+  margin-top: 20px; padding: 12px; background: #111; border-radius: 8px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+.footer-member { text-align: center; }
+.footer-member .name { font-size: 14px; font-weight: 700; }
+.footer-member .count { font-size: 11px; color: #555; }
+.nm-Member1 { color: #e06c75; }
+.nm-Member2 { color: #61afef; }
+.nm-Member3 { color: #98c379; }
+.empty-msg { text-align: center; color: #444; padding: 40px; }
+
+/* SETUP SCREEN */
+.setup-screen {
+  max-width: 520px; margin: 80px auto; background: #111; border: 1px solid #333;
+  border-radius: 12px; padding: 32px; text-align: center;
+}
+.setup-screen h1 { color: #e5c07b; font-size: 20px; margin-bottom: 8px; }
+.setup-screen p { color: #888; font-size: 12px; margin-bottom: 20px; line-height: 1.6; }
+.setup-screen label { display: block; text-align: left; color: #888; font-size: 11px; margin-bottom: 4px; margin-top: 12px; }
+.setup-screen input {
+  width: 100%; background: #1a1a1a; color: #ccc; border: 1px solid #333; border-radius: 6px;
+  padding: 8px 10px; font-size: 13px; font-family: 'JetBrains Mono', monospace; outline: none;
+}
+.setup-screen input:focus { border-color: #e5c07b; }
+.setup-screen .btn-setup {
+  margin-top: 20px; background: #e5c07b; color: #000; font-weight: 700; border: none;
+  border-radius: 6px; padding: 10px 24px; cursor: pointer; font-family: 'JetBrains Mono', monospace;
+  font-size: 14px; width: 100%;
+}
+.setup-screen .btn-setup:hover { background: #d4a843; }
+.setup-screen .error { color: #cf6e6e; font-size: 11px; margin-top: 8px; }
+.setup-names { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+</style>
+</head>
+<body>
+
+<div id="setupScreen" class="setup-screen">
+  <h1>⚽ WorldCupPlanner Tracker</h1>
+  <p>Configurá tu tracker para el obligatorio de Diseño de Aplicaciones 1.<br>
+  Cada equipo necesita su propio proyecto de Firebase (gratis).</p>
+
+  <label>Firebase API Key</label>
+  <input type="text" id="cfgApiKey" placeholder="AIzaSy...">
+
+  <label>Firebase Database URL</label>
+  <input type="text" id="cfgDbUrl" placeholder="https://tu-proyecto-default-rtdb.firebaseio.com">
+
+  <label>Firebase Project ID</label>
+  <input type="text" id="cfgProjectId" placeholder="tu-proyecto">
+
+  <label>Firebase App ID</label>
+  <input type="text" id="cfgAppId" placeholder="1:123456:web:abc123">
+
+  <label>Nombres del equipo (3 integrantes)</label>
+  <div class="setup-names">
+    <input type="text" id="cfgName1" placeholder="Nombre 1" value="Integrante1">
+    <input type="text" id="cfgName2" placeholder="Nombre 2" value="Integrante2">
+    <input type="text" id="cfgName3" placeholder="Nombre 3" value="Integrante3">
+  </div>
+
+  <button class="btn-setup" onclick="startApp()">Iniciar Tracker</button>
+  <div id="setupError" class="error"></div>
+</div>
+
+<div id="appContainer" style="display:none">
+  <div class="header">
+    <div class="header-top">
+      <span class="logo">⚽</span>
+      <span class="title">WorldCupPlanner</span>
+      <span class="sub">tracker</span>
+      <span id="syncIndicator" class="sync off"><span class="sync-dot"></span><span id="syncText">Conectando...</span></span>
+    </div>
+    <div class="header-meta">Diseño de Aplicaciones 1 — ORT — Entrega: 14/05/26 21:00</div>
+    <div id="progressArea"></div>
+  </div>
+  <div class="filters">
+    <input type="text" id="searchInput" placeholder="Buscar...">
+    <select id="catFilter"><option value="Todas">Todas las categorías</option></select>
+    <select id="memberFilter"><option value="Todos">Todos</option></select>
+    <select id="statusFilter">
+      <option value="Todos">Todos los estados</option>
+      <option value="Pendiente">Pendiente</option>
+      <option value="En Progreso">En Progreso</option>
+      <option value="Hecho">Hecho</option>
+      <option value="Bloqueado">Bloqueado</option>
+    </select>
+    <div class="view-btns">
+      <button class="view-btn active" id="btnList" onclick="setView('list')">Lista</button>
+      <button class="view-btn" id="btnBoard" onclick="setView('board')">Board</button>
+    </div>
+  </div>
+  <div id="addArea"></div>
+  <div id="contentArea"></div>
+  <div id="footerStats" class="footer-stats"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+const STATUSES = ["Pendiente", "En Progreso", "Hecho", "Bloqueado"];
+const CATEGORIES = [
+  "Setup","2.1 Usuarios","2.2 Equipos","2.3 Estadios","2.4 Gen Auto Equipos",
+  "2.5 Edición Partido","2.6 Simulación","2.7 Fixture 1ra Fase","2.8 Cruces 2da Fase",
+  "2.9 Importación","2.10 Auditoría","2.11 UI Pantallas","Config Params","Definiciones",
+  "3.1 IA - ABM Usuarios","3.2 IA - Skills","3.3 IA - Alternativas Import",
+  "Doc - Carátula","Doc - Descripción","Doc - Diag Paquetes","Doc - Diag Clases",
+  "Doc - Mecanismos","Doc - Análisis Deps","Doc - TDD","Doc - Cobertura","Doc - Uso IA",
+  "Doc - Anexos","Entrega"
+];
+
+const INITIAL_TASKS = []
+
+let tasks = [];
+let MEMBERS = [];
+let currentView = 'list';
+let expandedId = null;
+let showAddForm = false;
+let isConnected = false;
+let db, tasksRef;
+
+// Check localStorage for saved config
+const savedConfig = localStorage.getItem('wcp-firebase-config');
+const savedMembers = localStorage.getItem('wcp-members');
+if (savedConfig && savedMembers) {
+  try {
+    const cfg = JSON.parse(savedConfig);
+    MEMBERS = JSON.parse(savedMembers);
+    initFirebase(cfg);
+  } catch(e) {
+    document.getElementById('setupScreen').style.display = 'block';
+  }
+} else {
+  document.getElementById('setupScreen').style.display = 'block';
+}
+
+window.startApp = function() {
+  const apiKey = document.getElementById('cfgApiKey').value.trim();
+  const dbUrl = document.getElementById('cfgDbUrl').value.trim();
+  const projectId = document.getElementById('cfgProjectId').value.trim();
+  const appId = document.getElementById('cfgAppId').value.trim();
+  const n1 = document.getElementById('cfgName1').value.trim();
+  const n2 = document.getElementById('cfgName2').value.trim();
+  const n3 = document.getElementById('cfgName3').value.trim();
+
+  if (!apiKey || !dbUrl || !projectId || !appId) {
+    document.getElementById('setupError').textContent = 'Completá todos los campos de Firebase.';
+    return;
+  }
+  if (!n1 || !n2 || !n3) {
+    document.getElementById('setupError').textContent = 'Poné los 3 nombres del equipo.';
+    return;
+  }
+
+  const cfg = {
+    apiKey, authDomain: projectId + ".firebaseapp.com",
+    databaseURL: dbUrl, projectId,
+    storageBucket: projectId + ".firebasestorage.app",
+    messagingSenderId: "", appId
+  };
+
+  MEMBERS = [n1, n2, n3];
+  localStorage.setItem('wcp-firebase-config', JSON.stringify(cfg));
+  localStorage.setItem('wcp-members', JSON.stringify(MEMBERS));
+  initFirebase(cfg);
+};
+
+function initFirebase(cfg) {
+  try {
+    const app = initializeApp(cfg);
+    db = getDatabase(app);
+    tasksRef = ref(db, 'tasks');
+
+    document.getElementById('setupScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'block';
+
+    // Populate member filter
+    const mf = document.getElementById('memberFilter');
+    mf.innerHTML = '<option value="Todos">Todos</option>';
+    MEMBERS.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; mf.appendChild(o); });
+    const oNone = document.createElement('option'); oNone.value = '__none'; oNone.textContent = 'Sin asignar'; mf.appendChild(oNone);
+
+    // Populate cat filter
+    const cf = document.getElementById('catFilter');
+    CATEGORIES.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; cf.appendChild(o); });
+
+    // Listeners
+    document.getElementById('searchInput').addEventListener('input', render);
+    document.getElementById('catFilter').addEventListener('change', render);
+    document.getElementById('memberFilter').addEventListener('change', render);
+    document.getElementById('statusFilter').addEventListener('change', render);
+
+    onValue(tasksRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        tasks = Array.isArray(data) ? data.filter(Boolean) : Object.values(data);
+      } else {
+        tasks = JSON.parse(JSON.stringify(INITIAL_TASKS));
+        saveTasks();
+      }
+      isConnected = true;
+      updateSyncIndicator();
+      render();
+    }, (error) => {
+      isConnected = false;
+      updateSyncIndicator();
+      document.getElementById('setupError').textContent = 'Error de conexión: ' + error.message;
+    });
+  } catch(e) {
+    document.getElementById('setupScreen').style.display = 'block';
+    document.getElementById('appContainer').style.display = 'none';
+    document.getElementById('setupError').textContent = 'Config inválida: ' + e.message;
+    localStorage.removeItem('wcp-firebase-config');
+    localStorage.removeItem('wcp-members');
+  }
+}
+
+function saveTasks() { set(tasksRef, tasks); }
+
+function updateSyncIndicator() {
+  const el = document.getElementById('syncIndicator');
+  const txt = document.getElementById('syncText');
+  if (isConnected) { el.className = 'sync ok'; txt.textContent = 'Sincronizado'; }
+  else { el.className = 'sync off'; txt.textContent = 'Sin conexión'; }
+}
+
+window.setView = function(v) {
+  currentView = v;
+  document.getElementById('btnList').className = 'view-btn' + (v === 'list' ? ' active' : '');
+  document.getElementById('btnBoard').className = 'view-btn' + (v === 'board' ? ' active' : '');
+  render();
+};
+
+function getFiltered() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const cat = document.getElementById('catFilter').value;
+  const member = document.getElementById('memberFilter').value;
+  const status = document.getElementById('statusFilter').value;
+  return tasks.filter(t => {
+    if (cat !== 'Todas' && t.cat !== cat) return false;
+    if (member === '__none' && t.members && t.members.length > 0) return false;
+    if (member !== 'Todos' && member !== '__none' && (!t.members || !t.members.includes(member))) return false;
+    if (status !== 'Todos' && t.status !== status) return false;
+    if (search && !(t.task + ' ' + t.detail + ' ' + t.cat).toLowerCase().includes(search)) return false;
+    return true;
+  });
+}
+
+function memberColor(m) {
+  const colors = ['#e06c75','#61afef','#98c379','#e5c07b','#c678dd'];
+  const idx = MEMBERS.indexOf(m); return colors[idx % colors.length];
+}
+
+function stClass(s) { return 'st-' + s.replace(' ', ''); }
+
+function renderProgress() {
+  const total = tasks.length; if (!total) return '';
+  const counts = {}; STATUSES.forEach(s => counts[s] = 0);
+  tasks.forEach(t => counts[t.status] = (counts[t.status] || 0) + 1);
+  const pct = Math.round((counts['Hecho'] / total) * 100);
+  let h = `<div class="progress-stats"><span class="progress-pct">${pct}%</span><span>${counts['Hecho']}/${total} hechas</span>`;
+  if (counts['En Progreso']) h += `<span style="color:#6ecf6e">${counts['En Progreso']} en progreso</span>`;
+  if (counts['Bloqueado']) h += `<span style="color:#cf6e6e">${counts['Bloqueado']} bloqueadas</span>`;
+  h += `</div><div class="progress-bar"><div class="pb-done" style="width:${(counts['Hecho']/total)*100}%"></div><div class="pb-prog" style="width:${(counts['En Progreso']/total)*100}%"></div><div class="pb-block" style="width:${(counts['Bloqueado']/total)*100}%"></div></div>`;
+  return h;
+}
+
+function pillHtml(member, selected, taskId) {
+  const c = memberColor(member);
+  const cls = selected ? 'pill' : 'pill';
+  const style = selected ? `border-color:${c};background:${c}22;color:${c};font-weight:700` : '';
+  return `<button class="pill" style="${style}" onclick="toggleMember(${taskId},'${member}')">${member}</button>`;
+}
+
+function renderAvatars(members) {
+  if (!members || !members.length) return '';
+  return members.map(m => {
+    const c = memberColor(m);
+    return `<span class="avatar" style="background:${c}33;color:${c}">${m[0]}</span>`;
+  }).join('');
+}
+
+function renderList(filtered) {
+  if (!filtered.length) return '<div class="empty-msg">No hay tareas con estos filtros</div>';
+  return '<div class="task-list">' + filtered.map(t => {
+    const exp = expandedId === t.id;
+    let h = `<div class="task-row${exp ? ' expanded' : ''}"><div class="task-header" onclick="toggleExpand(${t.id})"><span class="task-cat">${t.cat}</span><span class="task-name">${esc(t.task)}</span><div class="task-avatars">${renderAvatars(t.members)}</div><span class="status-badge ${stClass(t.status)}" onclick="event.stopPropagation();cycleStatus(${t.id})"><span class="dot"></span>${t.status}</span></div>`;
+    if (exp) {
+      h += `<div class="task-detail">`;
+      if (t.detail) h += `<div class="task-detail-text">${esc(t.detail)}</div>`;
+      h += `<div class="task-detail-row"><span class="task-detail-label">Asignar:</span>${MEMBERS.map(m => pillHtml(m, t.members && t.members.includes(m), t.id)).join('')}</div>`;
+      h += `<div class="task-detail-row"><span class="task-detail-label">Estado:</span>${STATUSES.map(s => `<button class="status-opt ${t.status===s?stClass(s)+' active':''}" onclick="setStatus(${t.id},'${s}')">${s}</button>`).join('')}<button class="btn-delete" onclick="deleteTask(${t.id})">Eliminar</button></div></div>`;
+    }
+    h += '</div>'; return h;
+  }).join('') + '</div>';
+}
+
+function renderBoard(filtered) {
+  const dotColors = {Pendiente:'#555','En Progreso':'#4caf50',Hecho:'#4a8abf',Bloqueado:'#bf4a4a'};
+  return '<div class="board">' + STATUSES.map(status => {
+    const items = filtered.filter(t => t.status === status); const dc = dotColors[status];
+    return `<div class="board-col"><div class="board-col-header"><span class="dot" style="background:${dc}"></span><span class="label ${stClass(status)}">${status}</span><span class="count">${items.length}</span></div>${items.map(t => `<div class="board-card" style="border-left-color:${dc}"><div class="board-card-cat">${t.cat}</div><div class="board-card-name">${esc(t.task)}</div><div class="board-card-bottom">${MEMBERS.map(m => pillHtml(m, t.members&&t.members.includes(m), t.id)).join('')}<button class="next-btn" onclick="cycleStatus(${t.id})">→</button></div></div>`).join('')}</div>`;
+  }).join('') + '</div>';
+}
+
+function renderAddForm() {
+  if (!showAddForm) return `<button class="add-btn" onclick="showAdd()">+ Agregar tarea</button>`;
+  return `<div class="add-form"><div class="row"><select id="newCat">${CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('')}</select><select id="newStatus">${STATUSES.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div><input id="newTask" placeholder="Tarea..." style="margin-bottom:8px"><input id="newDetail" placeholder="Detalle (opcional)" style="margin-bottom:8px"><div class="members" id="newMembers">${MEMBERS.map(m=>`<button class="pill" onclick="toggleNewMember('${m}')" id="newpill-${m}">${m}</button>`).join('')}</div><div class="actions"><button class="btn-add" onclick="addTask()">Agregar</button><button class="btn-cancel" onclick="hideAdd()">Cancelar</button></div></div>`;
+}
+
+function renderFooter() {
+  return MEMBERS.map(m => {
+    const c = memberColor(m); const mine = tasks.filter(t => t.members && t.members.includes(m));
+    const done = mine.filter(t => t.status === 'Hecho').length;
+    return `<div class="footer-member"><div class="name" style="color:${c}">${m}</div><div class="count">${done}/${mine.length} tareas</div></div>`;
+  }).join('');
+}
+
+function esc(s) { if(!s)return''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+function render() {
+  const f = getFiltered();
+  document.getElementById('progressArea').innerHTML = renderProgress();
+  document.getElementById('addArea').innerHTML = renderAddForm();
+  document.getElementById('contentArea').innerHTML = currentView==='list' ? renderList(f) : renderBoard(f);
+  document.getElementById('footerStats').innerHTML = renderFooter();
+}
+
+let newMembers = [];
+window.toggleExpand = function(id) { expandedId = expandedId===id ? null : id; render(); };
+window.cycleStatus = function(id) { const t=tasks.find(x=>x.id===id); if(!t)return; t.status=STATUSES[(STATUSES.indexOf(t.status)+1)%STATUSES.length]; saveTasks(); };
+window.setStatus = function(id,s) { const t=tasks.find(x=>x.id===id); if(t){t.status=s;saveTasks();} };
+window.toggleMember = function(id,m) { const t=tasks.find(x=>x.id===id); if(!t)return; if(!t.members)t.members=[]; const i=t.members.indexOf(m); if(i>=0)t.members.splice(i,1);else t.members.push(m); saveTasks(); };
+window.deleteTask = function(id) { tasks=tasks.filter(t=>t.id!==id); saveTasks(); };
+window.showAdd = function() { showAddForm=true; newMembers=[]; render(); };
+window.hideAdd = function() { showAddForm=false; render(); };
+window.toggleNewMember = function(m) { const i=newMembers.indexOf(m); if(i>=0)newMembers.splice(i,1);else newMembers.push(m); const b=document.getElementById('newpill-'+m); const c=memberColor(m); b.style = newMembers.includes(m)?`border-color:${c};background:${c}22;color:${c};font-weight:700`:''; };
+window.addTask = function() { const t=document.getElementById('newTask').value.trim(); if(!t)return; tasks.push({id:Math.max(0,...tasks.map(x=>x.id))+1,cat:document.getElementById('newCat').value,task:t,detail:document.getElementById('newDetail').value.trim(),members:[...newMembers],status:document.getElementById('newStatus').value}); showAddForm=false; saveTasks(); };
+
+// Reset config
+window.resetConfig = function() { localStorage.removeItem('wcp-firebase-config'); localStorage.removeItem('wcp-members'); location.reload(); };
+</script>
+</body>
+</html>
