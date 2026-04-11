@@ -124,9 +124,62 @@ body { background: #0d0d0d; color: #ccc; font-family: 'JetBrains Mono', monospac
 }
 .btn-delete:hover { color: #ff4444; border-color: #ff4444; }
 .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-@media (max-width: 900px) { .board { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 500px) { .board { grid-template-columns: 1fr; } }
-.board-col { background: #111; border-radius: 8px; padding: 10px; min-height: 200px; }
+
+@media (max-width: 900px) {
+  .board { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+  body { padding: 10px; }
+
+  .header-top { flex-wrap: wrap; gap: 6px; }
+  .header-top .title { font-size: 16px; }
+  .header-top .sub { display: none; }
+
+  .progress-stats { flex-wrap: wrap; gap: 6px; font-size: 11px; }
+
+  .filters { flex-direction: column; align-items: stretch; gap: 6px; }
+  .filters input { width: 100%; }
+  .filters select { width: 100%; }
+  .view-btns { margin-left: 0; justify-content: stretch; }
+  .view-btn { flex: 1; text-align: center; }
+
+  .task-header {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 4px 8px;
+    padding: 8px 10px;
+  }
+  .task-cat { grid-column: 1 / -1; }
+  .task-name { grid-column: 1; }
+  .task-avatars { display: none; }
+  .status-badge { font-size: 10px; }
+
+  .task-detail-row { flex-wrap: wrap; gap: 4px; }
+  .pill { font-size: 11px; padding: 2px 8px; }
+  .status-opt { font-size: 9px; padding: 2px 6px; }
+
+  .add-form .row { grid-template-columns: 1fr; }
+
+  .board { grid-template-columns: 1fr; gap: 6px; }
+  .board-col { min-height: auto; padding: 8px; }
+  .board-col-header .label { font-size: 11px; }
+  .board-card { padding: 6px; }
+  .board-card-cat { font-size: 10px; }
+  .board-card-name { font-size: 11px; }
+  .board-card-bottom .pill { font-size: 10px; padding: 1px 6px; }
+  .board-card .next-btn { padding: 2px 8px; }
+
+  .footer-stats { grid-template-columns: 1fr; gap: 8px; }
+  .footer-member { text-align: left; padding: 6px 0; border-bottom: 1px solid #1a1a1a; }
+  .footer-member:last-child { border-bottom: none; }
+
+  .setup-screen { margin: 20px auto; padding: 20px; }
+  .setup-screen h1 { font-size: 17px; }
+  .setup-names { grid-template-columns: 1fr; }
+}
+.board-col { background: #111; border-radius: 8px; padding: 10px; max-height: 60vh; display: flex; flex-direction: column; }
+.board-col-cards { flex: 1; overflow-y: auto; min-height: 0; }
 .board-col-header {
   display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
   padding-bottom: 8px; border-bottom: 1px solid #222;
@@ -136,9 +189,10 @@ body { background: #0d0d0d; color: #ccc; font-family: 'JetBrains Mono', monospac
 .board-col-header .count { font-size: 11px; color: #444; margin-left: auto; }
 .board-card {
   background: #0d0d0d; border-radius: 6px; padding: 8px; margin-bottom: 6px; border-left: 3px solid;
+  overflow: hidden;
 }
-.board-card-cat { font-size: 11px; color: #555; margin-bottom: 2px; }
-.board-card-name { font-size: 12px; color: #ccc; margin-bottom: 4px; }
+.board-card-cat { font-size: 11px; color: #555; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-card-name { font-size: 12px; color: #ccc; margin-bottom: 4px; word-break: break-word; }
 .board-card-bottom { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 .board-card .next-btn {
   margin-left: auto; background: none; border: 1px solid #333; color: #555;
@@ -447,7 +501,7 @@ function renderBoard(filtered) {
   const dotColors = {Pendiente:'#555','En Progreso':'#4caf50',Hecho:'#4a8abf',Bloqueado:'#bf4a4a'};
   return '<div class="board">' + STATUSES.map(status => {
     const items = filtered.filter(t => t.status === status); const dc = dotColors[status];
-    return `<div class="board-col"><div class="board-col-header"><span class="dot" style="background:${dc}"></span><span class="label ${stClass(status)}">${status}</span><span class="count">${items.length}</span></div>${items.map(t => `<div class="board-card" style="border-left-color:${dc}"><div class="board-card-cat">${t.cat}</div><div class="board-card-name">${esc(t.task)}</div><div class="board-card-bottom">${MEMBERS.map(m => pillHtml(m, t.members&&t.members.includes(m), t.id)).join('')}<button class="next-btn" onclick="cycleStatus(${t.id})">→</button></div></div>`).join('')}</div>`;
+    return `<div class="board-col"><div class="board-col-header"><span class="dot" style="background:${dc}"></span><span class="label ${stClass(status)}">${status}</span><span class="count">${items.length}</span></div><div class="board-col-cards">${items.map(t => `<div class="board-card" style="border-left-color:${dc}"><div class="board-card-cat">${t.cat}</div><div class="board-card-name">${esc(t.task)}</div><div class="board-card-bottom">${MEMBERS.map(m => pillHtml(m, t.members&&t.members.includes(m), t.id)).join('')}<button class="next-btn" onclick="cycleStatus(${t.id})">→</button></div></div>`).join('')}</div></div>`;
   }).join('') + '</div>';
 }
 
